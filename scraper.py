@@ -31,14 +31,13 @@ time.sleep(3)
 search = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
 search.click()
 
-time.sleep(10)
+time.sleep(5)
 
 
 #try to change date via formating link
-# Настройки
 base_url = driver.current_url
-start_date = datetime.now()  # Сегодняшняя дата
-end_date = start_date + timedelta(days=10)  # Через три месяца
+start_date = datetime.now()  
+end_date = start_date + timedelta(days=10)  # 3 monts date
 current_date = start_date
 
 while current_date <= end_date:
