@@ -5,22 +5,27 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, timedelta
 
+
 # get url
 driver = webdriver.Chrome()
 driver.get('https://travel.yandex.ru/avia/')
+wait = WebDriverWait(driver, 20)
 
 # choose departure/arrival
 clean_button = driver.find_element(By.CSS_SELECTOR, "button[type='button']")
 clean_button.click()
-# time.sleep(2)
+time.sleep(2)
 
 departure = driver.find_element(By.CSS_SELECTOR, "input[type='text']")
 departure.send_keys('РЩН')
+departure_button = driver.find_element(By.XPATH, '//*[@id="suggest-0"]')
+departure_button.click()
 # time.sleep(2)
 
-arrival = driver.find_element(By.XPATH, '//*[@id="app"]/div/div[5]/div/div/div[2]/form/div[3]/label/div/div[2]/input')
+arrival = driver.find_element(By.XPATH, '/html/body/div[1]/div/div[5]/div/div/div[2]/form/div[3]/label/div/div[2]/input')
 arrival.send_keys('NUX')
-# time.sleep(2)
+arrival_button = driver.find_element(By.XPATH, '//*[@id="suggest-0"]')
+arrival_button.click()
 
 # choose date
 date1 = driver.find_element(By.XPATH, '/html/body/div[1]/div/div[5]/div/div/div[2]/form/div[4]/label[1]/div[1]')
