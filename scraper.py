@@ -43,10 +43,12 @@ start_date = datetime.now()
 end_date = start_date + timedelta(days=2)
 current_date = start_date
 
+all_flights_data = []
+
 while current_date <= end_date:
     wait = WebDriverWait(driver, 20)
     wait.until_not(EC.visibility_of_element_located((By.XPATH, "/html/body/div[1]/div/div[5]/div/div[3]")))
-    time.sleep(7)
+    time.sleep(10)
 
     # Прокрутка страницы
     last_height = driver.execute_script("return document.body.scrollHeight")
@@ -79,7 +81,7 @@ while current_date <= end_date:
         if "Ямал" in airline:
             if len(airline) == 1:
                 flights_data.append({
-                    "Дата": current_date.strftime('%d-%m-%Y'),
+                    "Дата": current_date.strftime('%d.%m.%Y'),
                     "Время вылета": departure_time,
                     "Время прилета": arrival_time,
                     "Цена": price_cleaned,
@@ -87,7 +89,7 @@ while current_date <= end_date:
                 })
         else:
             flights_data.append({
-                "Дата": current_date.strftime('%d-%m-%Y'),
+                "Дата": current_date.strftime('%d.%m.%Y'),
                 "Время вылета": departure_time,
                 "Время прилета": arrival_time,
                 "Цена": price_cleaned,
@@ -97,14 +99,17 @@ while current_date <= end_date:
     for flight in flights_data:
         print(f"Дата: {flight['Дата']}, Авиакомпания: {flight['Авиакомпания']}, Время вылета: {flight['Время вылета']}, Время прилета: {flight['Время прилета']}, Цена: {flight['Цена']}")
 
+    all_flights_data.extend(flights_data)
+
+    #переход на след страницу
     current_date += timedelta(days=1)
     date_str = current_date.strftime('%Y-%m-%d')
     new_url = base_url[0:-10] + date_str
     driver.get(new_url)
 
 # Сохранение в CSV
-csv_file = 'flights_data.csv'
-with open(csv_file, mode='w', encoding='utf-8', newline='') as file:
-    writer = csv.DictWriter(file, fieldnames=["Дата", "Время вылета", "Время прилета", "Цена", "Авиакомпания"])
-    writer.writeheader()
-    writer.writerows(flights_data)
+    csv_file = 'flights_data.csv'
+    with open(csv_file, mode='w', encoding='utf-8', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=["Дата", "Авиакомпания", "Время вылета", "Время прилета", "Цена"])
+        writer.writeheader()
+        writer.writerows(all_flights_data)
