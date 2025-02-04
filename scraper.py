@@ -107,7 +107,7 @@ while current_date <= end_date:
     new_url = base_url[0:-10] + date_str
     driver.get(new_url)
 
-# Сохранение в CSV
+# Сохранение в CSV формат
     csv_file = 'flights_data.csv'
     with open(csv_file, mode='w', encoding='utf-8', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=["Дата", "Авиакомпания", "Время вылета", "Время прилета", "Цена"])
