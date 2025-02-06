@@ -146,3 +146,4 @@ for n, route in enumerate(routes):
 
 # Закрываем драйвер после завершения
 driver.quit()
+#
