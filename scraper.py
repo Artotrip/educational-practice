@@ -7,7 +7,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, timedelta
 import re
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit, parse_qs, urlencode, urlunsplit
+import os
 
 # Загружаем маршруты
 routes = pd.read_csv('routes.csv').values
@@ -15,21 +16,17 @@ routes = pd.read_csv('routes.csv').values
 # Инициализируем веб-драйвер
 driver = webdriver.Chrome()
 driver.get('https://travel.yandex.ru/avia/')
-wait = WebDriverWait(driver, 20)
+wait = WebDriverWait(driver, 40)
 
 # Основной цикл по направлениям
-
 for n, route in enumerate(routes):
-
     departure_code, arrival_code = route  # Разбираем пару направлений
 
-     # Очистка и ввод данных в поля
+    # Очистка и ввод данных в поля
     clean_button = driver.find_elements(By.CSS_SELECTOR, "button[aria-label='Очистить поле']")
     clean_button[0].click()
 
     departure = driver.find_elements(By.CSS_SELECTOR, "input[type='text']")[0]
-    #departure.click()
-    #departure.clear()  # Очистка перед вводом
     departure.send_keys(departure_code)
     time.sleep(3)
 
@@ -43,6 +40,7 @@ for n, route in enumerate(routes):
     # Выбираем дату
     data1 = driver.find_elements(By.CLASS_NAME, 'INYOI')
     driver.execute_script("arguments[0].click();", data1[2])
+    time.sleep(2)
 
     today = datetime.now().strftime('%Y-%m-%d')
     choosedate = driver.find_element(By.CSS_SELECTOR, f'div[data-qa="calendar-day-{today}"]')
@@ -50,6 +48,7 @@ for n, route in enumerate(routes):
 
     search = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
     search.click()
+    time.sleep(5)
 
     # Формируем даты для поиска
     base_url = driver.current_url
@@ -57,12 +56,12 @@ for n, route in enumerate(routes):
     parsed_url = urlsplit(base_url)
     cleaned_url = urlunsplit(parsed_url._replace(fragment=""))
     start_date = datetime.now()
-    end_date = start_date + timedelta(days=2)
+    end_date = start_date + timedelta(days=1)
     current_date = start_date
 
     while current_date <= end_date:
         wait.until_not(EC.visibility_of_element_located((By.XPATH, "/html/body/div[1]/div/div[5]/div/div[3]")))
-        time.sleep(3)
+
 
         # Прокрутка страницы
         last_height = driver.execute_script("return document.body.scrollHeight")
@@ -84,8 +83,7 @@ for n, route in enumerate(routes):
             airline = [airline.strip() for airline in airlines.split(' • ')]
             departure_time = flight.find_element(By.CSS_SELECTOR, 'span[class="tKp9d XFySC b9-76"]').text
             arrival_time = flight.find_element(By.CSS_SELECTOR, 'span[class="XFySC b9-76"]').text
-            price = flight.find_element(By.CSS_SELECTOR,
-                                        'button[class="WvMZr Bnnv4 -ZlQV dsupm Uvwrs ACjs5 OSwqi"]').text
+            price = flight.find_element(By.CSS_SELECTOR,'button[class="WvMZr Bnnv4 -ZlQV dsupm Uvwrs ACjs5 OSwqi"]').text
 
             price_cleaned = re.sub(r'[^\d]', '', price)
 
@@ -93,26 +91,58 @@ for n, route in enumerate(routes):
                 "Дата": current_date.strftime('%d.%m.%Y'),
                 "Время вылета": departure_time,
                 "Время прилета": arrival_time,
-                "Цена": price_cleaned,
+                "Минимальная цена": price_cleaned,
                 "Авиакомпания": ", ".join(airline),
                 "Откуда": departure_code,
                 "Куда": arrival_code
             })
 
-        # Запись в CSV
-        csv_file = 'flights_data.csv'
-        with open(csv_file, mode='a', encoding='utf-8', newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=["Дата", "Откуда", "Куда", "Авиакомпания", "Время вылета",
-                                                      "Время прилета", "Цена"])
-            if current_date == start_date and route[0] == routes[0][0]:
-                writer.writeheader()  # Заголовки пишем только один раз
+        if flights_data:
+            min_price_flight = min(flights_data, key=lambda x: int(x["Минимальная цена"]))  # Находим рейс с минимальной ценой
 
-            writer.writerows(flights_data)
+            # Собираем все авиакомпании за день (убираем дубли, приводим к единому формату)
+            all_airlines = sorted(
+                set(airline.strip() for flight in flights_data for airline in flight["Авиакомпания"].split(", ")))
+
+            # Обновляем данные перед записью
+            min_price_flight["Авиакомпания"] = ", ".join(all_airlines)
+
+            # Проверяем, существует ли файл, чтобы добавить заголовки только в начале
+            file_exists = os.path.exists('flights_data3.csv')
+
+            csv_file = 'flights_data3.csv'
+
+            # Запись в CSV
+            with open('flights_data3.csv', mode='a', encoding='utf-8', newline='') as file:
+                writer = csv.DictWriter(file, fieldnames=["Дата", "Откуда", "Куда", "Авиакомпания", "Время вылета",
+                                                          "Время прилета", "Минимальная цена"])
+                if not file_exists:  # Если файл только создается, записываем заголовки
+                    writer.writeheader()
+
+                writer.writerow(min_price_flight)  # Записываем только один рейс с минимальной ценой
+
 
         # Переход на следующую дату
         current_date += timedelta(days=1)
+
+
+        def update_url_date(url, new_date):
+            parsed_url = urlsplit(url)
+            query_params = parse_qs(parsed_url.query)
+
+            # Обновляем параметр даты
+            query_params["when"] = [new_date]
+
+            # Собираем URL обратно
+            new_query = urlencode(query_params, doseq=True)
+            new_url = urlunsplit((parsed_url.scheme, parsed_url.netloc, parsed_url.path, new_query, ""))
+            return new_url
+
+
+        # Создаём новую дату
         date_str = current_date.strftime('%Y-%m-%d')
-        new_url = base_url[0:-10] + date_str
+        new_url = update_url_date(base_url, date_str)
+
         driver.get(new_url)
 
 # Закрываем драйвер после завершения
