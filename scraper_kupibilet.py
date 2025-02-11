@@ -38,7 +38,7 @@ options.add_argument("--start-maximized")
 driver = webdriver.Chrome(options=options)
 wait = WebDriverWait(driver, 60)
 
-# Основной цикл по маршрутам.
+## Основной цикл по маршрутам.
 for route in routes:
     departure_code, arrival_code = route
     departure_id = airport_codes.get(departure_code, departure_code)
